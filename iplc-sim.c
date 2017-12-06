@@ -176,7 +176,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 		cache[i].LRU = (long*)malloc(sizeof(long)*assoc);
 		cache[i].tag = (int*)malloc(sizeof(int*)*assoc);
 		
-		for (int j=0; j<cache_assoc; j++) {
+		for (j=0; j<cache_assoc; j++) {
 			cache[i].tag[j] = 0;
 			cache[i].valid[j] = 0;
 			cache[i].LRU[j] = 0;
