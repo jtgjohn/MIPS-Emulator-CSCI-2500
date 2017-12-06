@@ -196,21 +196,20 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 void iplc_sim_LRU_replace_on_miss(int index, int tag)
 {
     /* You must implement this function */
-	int oldest = cache[index].LRU[0];
-	int count =0;
-	for (int i=0; i<cache_assoc;i++) {
-		if (!cache[index].valid[i]) {
-			count = i;
-			break;
-		}
-		if (oldest < cache[index].LRU[i]) {
-			oldest = cache[index].LRU[i];
-			count = i; 
+	int i = 0;
+	int min = (cache[index]).LRU[0];
+	int temp = 0; 
+	for (i = 0; i < cache_assoc; i++) 
+	{
+		if ( (cache[index].LRU)[i] < min)
+		{
+			temp = i;
+			min = (cache[index].LRU)[i];
 		}
 	}
-	cache[index].tag[count] = tag;
-	cache[index].LRU[count] = cache_access;
-	cache[index].valid[count] = 1;
+	(cache[index].LRU)[temp] = cache_access;
+	(cache[index].tag)[temp] = tag; 
+	(cache[index].valid_bit)[temp] = 1; 
 }
 
 /*
@@ -356,6 +355,7 @@ void iplc_sim_push_pipeline_stage()
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
     if (pipeline[DECODE].itype == BRANCH) {
         int branch_taken = 0;
+		branch_count++;
 		if (pipeline[DECODE].instruction_address + 4 == pipeline[FETCH].instruction_address)
 			branch_taken = 1;
 		if (branch_predict_taken == branch_taken) 
@@ -372,7 +372,7 @@ void iplc_sim_push_pipeline_stage()
      *    add delay cycles if needed.
      */
     if (pipeline[MEM].itype == LW) {
-                int inserted_nop = 0;
+        int inserted_nop = 0;
 		int address_needed = pipeline[MEM].stage.lw.data_address;
 
 		if (pipeline[ALU].itype == RTYPE)
