@@ -224,15 +224,25 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 	cache[index].LRU[assoc_entry] = cache_access;
 }
 
-int bit_twiddling(int val, int lsb, int msb)
+int push_bits(int bitbucket, int zeroOrOne)
 {
-	int mask=0;
-	for (int i=0; i<msb+1; i++) 
-		mask += (1 << i);
-	int ret = val & mask;
-	for (int i=0;i<lsb;i++)
-		ret >>= 1;
-    return ret;
+	bitbucket<<=1;
+	bitbucket += zeroOrOne; 
+    return bitbucket;
+}
+int bit_twiddling(unsigned int val, int lsb, int msb)
+{
+	val >>= lsb;
+	int a = 1;
+	int counter;
+	for (counter = 0; counter < (msb - lsb + 1); counter++)
+	{
+		a = push_bits(a, 0);	
+	}
+	a-=1;
+	
+	return val & a;
+	
 }
 
 /*
