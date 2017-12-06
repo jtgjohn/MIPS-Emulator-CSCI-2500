@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
-//comment test
 #define MAX_CACHE_SIZE 10240
 #define CACHE_MISS_DELAY 10 // 10 cycle cache miss penalty
 #define MAX_STAGES 5
@@ -224,12 +223,6 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 	cache[index].LRU[assoc_entry] = cache_access;
 }
 
-int push_bits(int bitbucket, int zeroOrOne)
-{
-	bitbucket<<=1;
-	bitbucket += zeroOrOne; 
-    return bitbucket;
-}
 int bit_twiddling(unsigned int val, int lsb, int msb)
 {
 	val >>= lsb;
@@ -237,12 +230,11 @@ int bit_twiddling(unsigned int val, int lsb, int msb)
 	int counter;
 	for (counter = 0; counter < (msb - lsb + 1); counter++)
 	{
-		a = push_bits(a, 0);	
+		a <<=1;	
 	}
 	a-=1;
 	
-	return val & a;
-	
+	return val & a;	
 }
 
 /*
