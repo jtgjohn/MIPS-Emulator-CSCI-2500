@@ -209,7 +209,7 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 	}
 	(cache[index].LRU)[temp] = cache_access;
 	(cache[index].tag)[temp] = tag; 
-	(cache[index].valid_bit)[temp] = 1; 
+	(cache[index].valid)[temp] = 1; 
 }
 
 /*
@@ -353,20 +353,33 @@ void iplc_sim_push_pipeline_stage()
     }
     
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
-    if (pipeline[DECODE].itype == BRANCH) {
-        int branch_taken = 0;
+	if (pipeline[DECODE].itype == BRANCH) {
 		branch_count++;
-		if (pipeline[DECODE].instruction_address + 4 == pipeline[FETCH].instruction_address)
-			branch_taken = 1;
-		if (branch_predict_taken == branch_taken) 
-			correct_branch_predictions++;
-		else {
-			pipeline_cycles++;
-			for (i=MAX_STAGES-1; i>DECODE; i--) 
-				pipeline[i] = pipeline[i-1];
-			bzero(&(pipeline[DECODE]),sizeof(pipeline_t));
+		if(pipeline[FETCH].instruction_address) {
+			int branch_taken = 1;
+			unsigned int current_address = pipeline[DECODE].instruction_address;
+			unsigned int next_address = pipeline[FETCH].instruction_address;
+			//what if the branch next address is the next line, so that both predict and not predicts are correct
+			if (current_address + 4 == next_address)
+			{
+				branch_taken = 0; 
+			}
+			if (branch_taken != branch_predict_taken)
+			{
+				pipeline_cycles++; 
+				//incur incorrect branch stall
+				for(int i=4; i>1; i--) {
+					pipeline[i]=pipeline[i-1];
+				}
+				bzero(&(pipeline[DECODE]), sizeof(pipeline_t));
+				if(pipeline[WRITEBACK].instruction_address) instruction_count++;
+			}
+			else
+			{
+				correct_branch_predictions++;
+			}
 		}
-    }
+	}
     
     /* 3. Check for LW delays due to use in ALU stage and if data hit/miss
      *    add delay cycles if needed.
