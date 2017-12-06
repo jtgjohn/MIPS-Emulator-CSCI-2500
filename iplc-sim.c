@@ -379,15 +379,19 @@ void iplc_sim_push_pipeline_stage()
     /* 3. Check for LW delays due to use in ALU stage and if data hit/miss
      *    add delay cycles if needed.
      */
-	if (pipeline[MEM].itype == LW) {
-		int inserted_nop = 0;
+    if (pipeline[MEM].itype == LW) {
+                int inserted_nop = 0;
 		int address_needed = pipeline[MEM].stage.lw.data_address;
+
 		if (pipeline[ALU].itype == RTYPE)
 		{
 			int address_used = pipeline[ALU].stage.rtype.dest_reg;
-			if (address_needed == address_used)
+			if ((pipeline[ALU].stage.rtype.reg1 == address_used) || (pipeline[ALU].stage.rtype.reg2_or_constant == address_used))
 			{
 				//data hazaard maybe forwarding can help here...
+				//one stage stall, move everything after ALU over one
+				pipeline[WRITEBACK] = pipeline[MEM];
+				bzero(&(pipeline[MEM]), sizeof(pipeline_t));
 				inserted_nop++;
 			}
 		}
@@ -398,7 +402,7 @@ void iplc_sim_push_pipeline_stage()
 			inserted_nop += 10;
 		}
 		pipeline_cycles+=inserted_nop; 
-	}
+    }
     
     /* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
     if (pipeline[MEM].itype == SW) {
