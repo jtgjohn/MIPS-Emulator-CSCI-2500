@@ -390,7 +390,7 @@ void iplc_sim_push_pipeline_stage()
 
 		if (pipeline[ALU].itype == RTYPE)
 		{
-			int address_used = pipeline[ALU].stage.rtype.dest_reg;
+			int address_used = pipeline[MEM].stage.rtype.dest_reg;
 			if ((pipeline[ALU].stage.rtype.reg1 == address_used) || (pipeline[ALU].stage.rtype.reg2_or_constant == address_used))
 			{
 				//data hazaard maybe forwarding can help here...
@@ -398,6 +398,7 @@ void iplc_sim_push_pipeline_stage()
 				pipeline[WRITEBACK] = pipeline[MEM];
 				bzero(&(pipeline[MEM]), sizeof(pipeline_t));
 				inserted_nop++;
+				if(pipeline[WRITEBACK].instruction_address) instruction_count++;
 			}
 		}
 		int hit;
