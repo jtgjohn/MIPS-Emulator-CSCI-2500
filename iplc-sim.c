@@ -268,7 +268,7 @@ int iplc_sim_trap_address(unsigned int address)
 		iplc_sim_LRU_replace_on_miss(index,tag);
 	}
 	
-	
+	printf("Address %x: Tag= %x, Index= %d\n", address, tag, index);
     /* expects you to return 1 for hit, 0 for miss */
     return hit;
 }
