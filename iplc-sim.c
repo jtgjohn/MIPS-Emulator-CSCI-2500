@@ -265,6 +265,7 @@ int iplc_sim_trap_address(unsigned int address)
 	}
 	if (!hit){
 		cache_miss++;
+		pipeline_cycles+=10;
 		iplc_sim_LRU_replace_on_miss(index,tag);
 	}
 	
@@ -391,7 +392,7 @@ void iplc_sim_push_pipeline_stage()
 		if (pipeline[ALU].itype == RTYPE)
 		{
 			int address_used = pipeline[MEM].stage.rtype.dest_reg;
-			if ((pipeline[ALU].stage.rtype.reg1 == address_used) || (pipeline[ALU].stage.rtype.reg2_or_constant == address_used))
+			if ((pipeline[ALU].stage.rtype.reg1 == address_used) || (pipeline[ALU].stage.rtype.reg2_or_constant == address_used) || (pipeline[MEM].stage.rtype.dest_reg == address_used))
 			{
 				//data hazaard maybe forwarding can help here...
 				//one stage stall, move everything after ALU over one
