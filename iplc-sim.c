@@ -43,10 +43,10 @@ typedef struct cache_line
     // a tag
     // a method for handling varying levels of associativity
     // a method for selecting which item in the cache is going to be replaced
+	
 	int* valid;
 	int* tag;
 	long* LRU;
-	
 	
 } cache_line_t;
 
@@ -153,6 +153,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     (int) rint((log( (double) (blocksize * 4) )/ log(2)));
     /* Note: rint function rounds the result up prior to casting */
     
+	//finds cache_size using formula given in pdf
     cache_size = assoc * ( 1 << index ) * ((32 * blocksize) + 33 - index - cache_blockoffsetbits);
     
     printf("Cache Configuration \n");
@@ -167,18 +168,23 @@ void iplc_sim_init(int index, int blocksize, int assoc)
         exit(-1);
     }
     
+	//cache has size of the largest number held in the index, so 1<<index
     cache = (cache_line_t *) malloc((sizeof(cache_line_t) * 1<<index));
     
     // Dynamically create our cache based on the information the user entered
+	// Goes through each cache location; initiallizes each array
     for (i = 0; i < (1<<index); i++) {
 		cache[i].valid = (int*)malloc(sizeof(int)*assoc);
 		cache[i].LRU = (long*)malloc(sizeof(long)*assoc);
 		cache[i].tag = (int*)malloc(sizeof(int*)*assoc);
 		
 		for (j=0; j<cache_assoc; j++) {
-			cache[i].tag[j] = 0;
+			//Starts all valid bits to 0 (as invalid)
 			cache[i].valid[j] = 0;
+			//LRU will hold the cache_access when an index was accessed
 			cache[i].LRU[j] = 0;
+			//tag will hold the corresponding tag
+			cache[i].tag[j] = 0;
 		}
     }
     
@@ -199,6 +205,9 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 	int i = 0;
 	int min = (cache[index]).LRU[0];
 	int temp = 0; 
+	
+	//finds the last used value in the cache by finding the min value in the 
+	//LRU and storing the index in temp
 	for (i = 0; i < cache_assoc; i++) 
 	{
 		if ( (cache[index].LRU)[i] < min)
@@ -207,6 +216,8 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 			min = (cache[index].LRU)[i];
 		}
 	}
+	//updates the cache by replacing all least recently used index values 
+	//with the new value we are storing into the cache
 	(cache[index].LRU)[temp] = cache_access;
 	(cache[index].tag)[temp] = tag; 
 	(cache[index].valid)[temp] = 1; 
@@ -219,9 +230,12 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 {
     /* You must implement this function */
+	//updates when the cache index was recently used with the current cache_access
 	cache[index].LRU[assoc_entry] = cache_access;
 }
 
+//Function takes an int and return the int from the least sig bit to the most
+//sig bit. Function taken from Lab 9. 
 int bit_twiddling(unsigned int val, int lsb, int msb)
 {
 	val >>= lsb;
@@ -250,19 +264,26 @@ int iplc_sim_trap_address(unsigned int address)
     
     // Call the appropriate function for a miss or hit
 	cache_access++;
+	
+	//finds the tag/index using bit_twiddling and the correct bounds for the bits
+	//to isolate the tag and index
 	tag = bit_twiddling(address, cache_index + cache_blockoffsetbits, 32);
 	index = bit_twiddling(address, 
 	 cache_blockoffsetbits, cache_blockoffsetbits + cache_index - 1);
+	
+	//goes thru the cache line and checks whether the tag matches and whether the 
+	//tag matches
 	for (i=0;i < cache_assoc;i++) {
-		if (!cache[index].valid[i])
+		if (!cache[index].valid[i]) //if not valid, we leave hit as 0 and break
 			break;
-		if (cache[index].tag[i] == tag){
+		if (cache[index].tag[i] == tag){ //if tags match and valid bit is true, updates on hit
 			iplc_sim_LRU_update_on_hit(index,i);
 			hit = 1;
 			cache_hit++;
 			break;
 		}
 	}
+	//if not added into the cache replace on miss
 	if (!hit){
 		cache_miss++;
 		iplc_sim_LRU_replace_on_miss(index,tag);
