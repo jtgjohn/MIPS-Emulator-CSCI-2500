@@ -391,11 +391,12 @@ void iplc_sim_push_pipeline_stage()
         int inserted_nop = 0; //this variable will correlate to the increase in pipeline cycles
 		int address_needed = pipeline[MEM].stage.lw.data_address; //used later for determining whether a hit or a miss
 			
-		if (pipeline[ALU].itype == RTYPE)
-		{
 			int address_used = pipeline[MEM].stage.rtype.dest_reg;//this is where the data is going
-			if ((pipeline[ALU].stage.rtype.reg1 == address_used) || (pipeline[ALU].stage.rtype.reg2_or_constant == address_used))
-			{//if there next pipeline stage is where the data is going, there is a data hazard
+	    
+	if ( (pipeline[ALU].itype == RTYPE && (pipeline[ALU].stage.rtype.reg1 == address_used || pipeline[ALU].stage.rtype.reg2_or_constant == address_used)) ||
+			(pipeline[ALU].itype == LW && (pipeline[ALU].stage.lw.base_reg == address_used || pipeline[ALU].stage.lw.dest_reg == address_used)) ||
+			(pipeline[ALU].itype == SW && (pipeline[ALU].stage.sw.src_reg == address_used || pipeline[ALU].stage.sw.base_reg == address_used)) )			
+	{//if there next pipeline stage is where the data is going, there is a data hazard
 				pipeline_cycles++;
 				//data hazaard maybe forwarding can help here...
 				//one stage stall, move everything after ALU over one
@@ -403,8 +404,8 @@ void iplc_sim_push_pipeline_stage()
 				bzero(&(pipeline[MEM]), sizeof(pipeline_t));//insert nop
 				inserted_nop++;
 				if(pipeline[WRITEBACK].instruction_address) instruction_count++; //if valid instruction at end, increase instruction count
-			}
-		}
+			
+	}
 		int hit;
 		hit = iplc_sim_trap_address(address_needed);
 		if (!hit)
