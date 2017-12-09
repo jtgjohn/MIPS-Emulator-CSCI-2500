@@ -354,29 +354,32 @@ void iplc_sim_push_pipeline_stage()
     
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
 	if (pipeline[DECODE].itype == BRANCH) {
-		branch_count++;
-		if(pipeline[FETCH].instruction_address) {
-			int branch_taken = 1;
+		branch_count++;//increase number of branches if it's a branch
+		if(pipeline[FETCH].instruction_address) { //make sure it's a valid instruction in the fetch stage
+			int branch_taken = 1; //1 corresponds to true
 			unsigned int current_address = pipeline[DECODE].instruction_address;
 			unsigned int next_address = pipeline[FETCH].instruction_address;
 			//what if the branch next address is the next line, so that both predict and not predicts are correct
-			if (current_address + 4 == next_address)
+			//if the next address is immediately after our current address, then the branch could not have been taken.
+			if (current_address + 4 == next_address) 
+ 			//The +4 indicates whether the branch is adjacent or not
 			{
-				branch_taken = 0; 
+				branch_taken = 0; //branch not taken
 			}
-			if (branch_taken != branch_predict_taken)
+			if (branch_taken != branch_predict_taken) //compares whether it was taken to our prediction, either a 0 or 1
 			{
-				pipeline_cycles++; 
+				pipeline_cycles++; //if taken, there is a stall and the pipeline cycles must increase
 				//incur incorrect branch stall
-				for(int i=4; i>1; i--) {
+				for(int i=4; i>1; i--) {//shift everything in the pipeline along 
 					pipeline[i]=pipeline[i-1];
 				}
-				bzero(&(pipeline[DECODE]), sizeof(pipeline_t));
-				if(pipeline[WRITEBACK].instruction_address) instruction_count++;
+				bzero(&(pipeline[DECODE]), sizeof(pipeline_t));//insert NOP into pipeline
+				//if valid instruction at the end of the pipeline, increase instruction count
+				if(pipeline[WRITEBACK].instruction_address) instruction_count++; 
 			}
 			else
 			{
-				correct_branch_predictions++;
+				correct_branch_predictions++;//we guessed right
 			}
 		}
 	}
@@ -385,36 +388,36 @@ void iplc_sim_push_pipeline_stage()
      *    add delay cycles if needed.
      */
     if (pipeline[MEM].itype == LW) {
-        int inserted_nop = 0;
-		int address_needed = pipeline[MEM].stage.lw.data_address;
-
+        int inserted_nop = 0; //this variable will correlate to the increase in pipeline cycles
+		int address_needed = pipeline[MEM].stage.lw.data_address; //used later for determining whether a hit or a miss
+			
 		if (pipeline[ALU].itype == RTYPE)
 		{
-			int address_used = pipeline[MEM].stage.rtype.dest_reg;
+			int address_used = pipeline[MEM].stage.rtype.dest_reg;//this is where the data is going
 			if ((pipeline[ALU].stage.rtype.reg1 == address_used) || (pipeline[ALU].stage.rtype.reg2_or_constant == address_used))
-			{
+			{//if there next pipeline stage is where the data is going, there is a data hazard
+				pipeline_cycles++;
 				//data hazaard maybe forwarding can help here...
 				//one stage stall, move everything after ALU over one
 				pipeline[WRITEBACK] = pipeline[MEM];
-				bzero(&(pipeline[MEM]), sizeof(pipeline_t));
+				bzero(&(pipeline[MEM]), sizeof(pipeline_t));//insert nop
 				inserted_nop++;
-				if(pipeline[WRITEBACK].instruction_address) instruction_count++;
+				if(pipeline[WRITEBACK].instruction_address) instruction_count++; //if valid instruction at end, increase instruction count
 			}
 		}
 		int hit;
 		hit = iplc_sim_trap_address(address_needed);
 		if (!hit)
 		{
-			inserted_nop += 10;
+			pipeline_cycles+=9-inserted_nop;//delay for missing cache
 		}
-		pipeline_cycles+=inserted_nop; 
     }
     
     /* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
     if (pipeline[MEM].itype == SW) {
 		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.sw.data_address);
 		if (!data_hit)
-			pipeline_cycles+=CACHE_MISS_DELAY;
+			pipeline_cycles+=CACHE_MISS_DELAY-1; //if cache missed, there is a delay in the pipeline
     }
     
     /* 5. Increment pipe_cycles 1 cycle for normal processing */
@@ -425,6 +428,13 @@ void iplc_sim_push_pipeline_stage()
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
     bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
 }
+
+/*
+The following functions set the variables for the incoming pipeline FETCH stage for each of the commands available. 
+This shifts our incoming MIPS commands into the pipeline for processing.
+The above function: iplc_sim_push_pipeline_stage() is called in each of these functions, because it pushes the pipeline along, 
+opening up a new space in pipeline FETCH, and the cycle continues
+*/
 
 /*
  * This function is fully implemented.  You should use this as a reference
@@ -443,11 +453,13 @@ void iplc_sim_process_pipeline_rtype(char *instruction, int dest_reg, int reg1, 
     pipeline[FETCH].stage.rtype.reg2_or_constant = reg2_or_constant;
     pipeline[FETCH].stage.rtype.dest_reg = dest_reg;
 }
-
+/*
+This function sets all the variables for the pipeline fetch stage for the load word command
+*/
 void iplc_sim_process_pipeline_lw(int dest_reg, int base_reg, unsigned int data_address)
 {
     /* You must implement this function */
-	iplc_sim_push_pipeline_stage();
+	iplc_sim_push_pipeline_stage();//pushes pipeline through one more stage after checking if stalls/forwarding will occur
 	
 	pipeline[FETCH].itype = LW;
 	pipeline[FETCH].instruction_address = instruction_address;
@@ -457,7 +469,9 @@ void iplc_sim_process_pipeline_lw(int dest_reg, int base_reg, unsigned int data_
 	pipeline[FETCH].stage.lw.data_address = data_address;
 	
 }
-
+/*
+This function sets all the variables for the pipeline fetch stage for the store word command
+*/
 void iplc_sim_process_pipeline_sw(int src_reg, int base_reg, unsigned int data_address)
 {
     /* You must implement this function */
@@ -470,7 +484,9 @@ void iplc_sim_process_pipeline_sw(int src_reg, int base_reg, unsigned int data_a
 	pipeline[FETCH].stage.sw.src_reg = src_reg;
 	pipeline[FETCH].stage.sw.base_reg = base_reg; 
 }
-
+/*
+This function sets all the variables for the pipeline fetch stage for the branch if equal command
+*/
 void iplc_sim_process_pipeline_branch(int reg1, int reg2)
 {
     /* You must implement this function */
@@ -482,7 +498,9 @@ void iplc_sim_process_pipeline_branch(int reg1, int reg2)
 	pipeline[FETCH].stage.branch.reg1 = reg1;
 	pipeline[FETCH].stage.branch.reg2 = reg2; 
 }
-
+/*
+This function sets all the variables for the pipeline fetch stage for the jump command
+*/
 void iplc_sim_process_pipeline_jump(char *instruction)
 {
     /* You must implement this function */
@@ -493,7 +511,9 @@ void iplc_sim_process_pipeline_jump(char *instruction)
 	
 	strcpy(pipeline[FETCH].stage.jump.instruction, instruction);
 }
-
+/*
+This function sets all the variables for the pipeline fetch stage for the syscall command
+*/
 void iplc_sim_process_pipeline_syscall()
 {
     /* You must implement this function */
@@ -502,7 +522,9 @@ void iplc_sim_process_pipeline_syscall()
 	pipeline[FETCH].itype = SYSCALL; 
 	pipeline[FETCH].instruction_address = instruction_address;
 }
-
+/*
+This function sets all the variables for the pipeline fetch stage for the nop command
+*/
 void iplc_sim_process_pipeline_nop()
 {
     /* You must implement this function */
